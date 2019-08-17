@@ -16,14 +16,15 @@ type
     function calcularTempoPreparo(const APizzaTamanho: TPizzaTamanhoEnum; const APizzaSabor: TPizzaSaborEnum): Integer;
   public
     function efetuarPedido(const APizzaTamanho: TPizzaTamanhoEnum; const APizzaSabor: TPizzaSaborEnum; const ADocumentoCliente: String): TPedidoRetornoDTO;
-
+    function consultarPedido(const ADocumentoCliente: String): TPedidoRetornoDTO;
     constructor Create; reintroduce;
   end;
 
 implementation
 
 uses
-  UPedidoRepositoryImpl, System.SysUtils, UClienteServiceImpl;
+  UPedidoRepositoryImpl, System.SysUtils, UClienteServiceImpl,
+  FireDAC.Comp.Client, System.TypInfo;
 
 { TPedidoService }
 
@@ -53,6 +54,32 @@ begin
       Result := 30;
     enGrande:
       Result := 40;
+  end;
+end;
+
+function TPedidoService.consultarPedido(
+  const ADocumentoCliente: String): TPedidoRetornoDTO;
+var
+    oFDQuery: TFDQuery;
+    tamanho_pizza: TPizzaTamanhoEnum;
+    sabor_pizza: TPizzaSaborEnum;
+begin
+  try
+    oFDQuery := TFDQuery.Create(nil);
+    FPedidoRepository.consultarPedido(ADocumentoCliente, oFDQuery);
+    if (oFDQuery.IsEmpty) then
+      Result := nil
+    else
+      begin
+        tamanho_pizza := TPizzaTamanhoEnum(GetEnumValue(TypeInfo(TPizzaTamanhoEnum), oFDQuery.FieldByName('tamanho_pizza').AsString));
+        sabor_pizza   := TPizzaSaborEnum(GetEnumValue(TypeInfo(TPizzaSaborEnum), oFDQuery.FieldByName('sabor_pizza').AsString));
+        Result := TPedidoRetornoDTO.Create(tamanho_pizza
+                                          ,sabor_pizza
+                                          ,oFDQuery.FieldByName('vl_pedido').AsCurrency
+                                          ,oFDQuery.FieldByName('nr_tempopedido').AsInteger);
+      end;
+  finally
+    oFDQuery.Free;
   end;
 end;
 
